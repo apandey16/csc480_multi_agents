@@ -1,9 +1,4 @@
-# p1 fixed original code:
-# - in PredatorPreyModel __init__() function, called super init and initialized current_id to 0
-# - replaced deprecated find_empty() function by placing agents at (0, 0) and using move_to_empty()
-# - to prevent Prey move() errors, made step() return early if self.pos is None
-
-# My addition: 
+# My additions: Plants which the prey eat and they grow in energy, hunters attack the predators, and prey run away from predators
 
 from mesa import Agent, Model
 from mesa.time import RandomActivation
@@ -35,6 +30,11 @@ class Prey(Agent):
         possible_steps = self.model.grid.get_neighborhood(
             self.pos, moore=True, include_center=False
         )
+        predator_agents = [agent for agent in possible_steps if
+                       isinstance(agent, Predator)]
+        if predator_agents:
+            predator_to_run_from = random.choice(predator_agents)
+            possible_steps.remove(predator_to_run_from)
         new_position = random.choice(possible_steps)
         self.model.grid.move_agent(self, new_position)
 
@@ -70,6 +70,48 @@ class Prey(Agent):
         self.energy -= 1
 
 
+class Hunter(Agent):
+    def __init__(self, unique_id, model):
+        super().__init__(unique_id, model)
+        self.energy = 100
+        self.just_caught = False
+        self.animals_caught = 0
+
+    def move(self):
+        if self.just_caught:
+            self.just_caught = False
+            return
+        possible_steps = self.model.grid.get_neighborhood(
+            self.pos, moore=True, include_center=False
+        )
+        predator_agents = [agent for agent in possible_steps if
+                       isinstance(agent, Predator)]
+        if predator_agents:
+            predator_to_attack = random.choice(predator_agents)
+            new_position = predator_to_attack.pos
+        else:
+            new_position = random.choice(possible_steps)
+            self.model.grid.move_agent(self, new_position)
+
+    def attack(self):
+        predator_neighbors = self.model.grid.get_cell_list_contents(
+            [self.pos]
+        )
+        predator_agents = [agent for agent in predator_neighbors if
+                       isinstance(agent, Prey)]
+        if predator_agents:
+            predator_to_eat = random.choice(predator_agents)
+            self.model.schedule.remove(predator_to_eat)
+            self.model.grid.remove_agent(predator_to_eat)
+            self.energy += predator_to_eat.energy
+            self.just_caught = True
+            self.animals_caught += 1
+
+    def step(self):
+        self.move()
+        self.attack()
+        self.energy -= 1
+
 class Predator(Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
@@ -79,6 +121,11 @@ class Predator(Agent):
         possible_steps = self.model.grid.get_neighborhood(
             self.pos, moore=True, include_center=False
         )
+        hunter_agents = [agent for agent in possible_steps if
+                       isinstance(agent, Hunter)]
+        if hunter_agents:
+            hunter_to_run_from = random.choice(hunter_agents)
+            possible_steps.remove(hunter_to_run_from)
         new_position = random.choice(possible_steps)
         self.model.grid.move_agent(self, new_position)
 
@@ -103,6 +150,8 @@ class Predator(Agent):
             self.model.schedule.add(new_predator)
 
     def step(self):
+        if self.pos is None:
+            return
         self.move()
         self.eat()
         self.breed()
@@ -110,7 +159,7 @@ class Predator(Agent):
 
 
 class PreyPredatorModel(Model):
-    def __init__(self, height, width, prey_count, predator_count, plant_count):
+    def __init__(self, height, width, prey_count, predator_count, plant_count, hunter_count):
         super().__init__()
         self.current_id = 0
         self.height = height
@@ -137,11 +186,17 @@ class PreyPredatorModel(Model):
             self.grid.move_to_empty(plant)
             self.schedule.add(plant)
 
+        for i in range(hunter_count):
+            hunter = Hunter(self.next_id(), self)
+            self.grid.place_agent(hunter, PLACEHOLDER_POS)
+            self.grid.move_to_empty(hunter)
+            self.schedule.add(hunter)
+
     def step(self):
         self.schedule.step()
 
 def main():
-    model = PreyPredatorModel(height=10, width=100, prey_count=50, plant_count=10,
+    model = PreyPredatorModel(height=10, width=100, prey_count=50, plant_count=10, hunter_count=10,
                               predator_count=10)
 
     for i in range(100):
@@ -153,7 +208,10 @@ def main():
             isinstance(agent, Predator) for agent in model.schedule.agents)
         plant_count = sum(
             isinstance(agent, Plant) for agent in model.schedule.agents)
-        print(f"After step {i}: Prey={prey_count}, Predators={predator_count}, Plants={plant_count}")
+        hunter_count = sum(
+            isinstance(agent, Hunter) for agent in model.schedule.agents)
+        animals_caught = sum(agent.animals_caught for agent in model.schedule.agents if isinstance(agent, Hunter))
+        print(f"After step {i}: Prey={prey_count}, Predators={predator_count}, Plants={plant_count}, Hunters={hunter_count}, Animals caught={animals_caught}")
 
 
 if __name__ == '__main__':
