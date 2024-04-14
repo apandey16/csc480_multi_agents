@@ -4,9 +4,18 @@ from mesa import Agent, Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
 import random
+from mesa.visualization.modules import CanvasGrid
+from mesa.visualization.ModularVisualization import ModularServer
+from mesa.visualization.modules import ChartModule
 
 
 PLACEHOLDER_POS = (0, 0)
+HEIGHT = 10
+WIDTH = 100
+PREY = 50
+PREDATOR = 10
+PLANT = 10
+HUNTER = 10
 
 class Plant(Agent):
     def __init__(self, unique_id, model):
@@ -196,8 +205,8 @@ class PreyPredatorModel(Model):
         self.schedule.step()
 
 def main():
-    model = PreyPredatorModel(height=10, width=100, prey_count=50, plant_count=10, hunter_count=10,
-                              predator_count=10)
+    model = PreyPredatorModel(height=HEIGHT, width=WIDTH, prey_count=PREY, plant_count=PLANT, hunter_count=HUNTER,
+                              predator_count=PREDATOR)
 
     for i in range(100):
         model.step()
@@ -213,6 +222,28 @@ def main():
         animals_caught = sum(agent.animals_caught for agent in model.schedule.agents if isinstance(agent, Hunter))
         print(f"After step {i}: Prey={prey_count}, Predators={predator_count}, Plants={plant_count}, Hunters={hunter_count}, Animals caught={animals_caught}")
 
+        def agent_portrayal(agent):
+            if isinstance(agent, Prey):
+                portrayal = {"Shape": "circle",
+                             "Color": "blue"
+                             }
+            elif isinstance(agent, Predator):
+                portrayal = {"Shape": "circle",
+                             "Color": "red"
+                             }
+            elif isinstance(agent, Plant):
+                portrayal = {"Shape": "rect",
+                             "Color": "green"
+                             }
+            elif isinstance(agent, Hunter):
+                portrayal = {"Shape": "rect",
+                             "Color": "orange",
+                             }
+            else:
+                portrayal = None
+            return portrayal
+
+        
 
 if __name__ == '__main__':
     main()
