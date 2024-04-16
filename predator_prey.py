@@ -1,7 +1,10 @@
 # My additions: Plants which the prey eat and they grow in energy, hunters attack the predators, and prey run away from predators
 
 from mesa import Agent, Model
+from mesa.datacollection import DataCollector
+from mesa.experimental.jupyter_viz import JupyterViz
 from mesa.time import RandomActivation
+import seaborn as sns
 from mesa.space import MultiGrid
 import random
 from mesa.visualization.modules import CanvasGrid
@@ -11,8 +14,8 @@ from mesa.visualization.modules import ChartModule
 
 PLACEHOLDER_POS = (0, 0)
 HEIGHT = 10
-WIDTH = 100
-PREY = 50
+WIDTH = 10
+PREY = 5
 PREDATOR = 10
 PLANT = 10
 HUNTER = 10
@@ -166,7 +169,6 @@ class Predator(Agent):
         self.breed()
         self.energy -= 1
 
-
 class PreyPredatorModel(Model):
     def __init__(self, height, width, prey_count, predator_count, plant_count, hunter_count):
         super().__init__()
@@ -200,13 +202,28 @@ class PreyPredatorModel(Model):
             self.grid.place_agent(hunter, PLACEHOLDER_POS)
             self.grid.move_to_empty(hunter)
             self.schedule.add(hunter)
+        
+        self.datacollector = DataCollector(model_reporters={
+            "Prey": lambda m: sum(isinstance(agent, Prey) for agent in m.schedule.agents),
+            "Predator": lambda m: sum(isinstance(agent, Predator) for agent in m.schedule.agents),
+            "Plant": lambda m: sum(isinstance(agent, Plant) for agent in m.schedule.agents),
+            "Hunter": lambda m: sum(isinstance(agent, Hunter) for agent in m.schedule.agents),
+            }, agent_reporters={
+            "Prey": "prey",
+            "Predator": "predator",
+            "Plant": "plant",
+            "Hunter": "hunter",
+            "Animals Caught": "animals_caught"
+        }
+        )
 
     def step(self):
+        self.datacollector.collect(self)
         self.schedule.step()
 
 def main():
     model = PreyPredatorModel(height=HEIGHT, width=WIDTH, prey_count=PREY, plant_count=PLANT, hunter_count=HUNTER,
-                              predator_count=PREDATOR)
+                                predator_count=PREDATOR)
 
     for i in range(100):
         model.step()
@@ -222,28 +239,42 @@ def main():
         animals_caught = sum(agent.animals_caught for agent in model.schedule.agents if isinstance(agent, Hunter))
         print(f"After step {i}: Prey={prey_count}, Predators={predator_count}, Plants={plant_count}, Hunters={hunter_count}, Animals caught={animals_caught}")
 
-        def agent_portrayal(agent):
-            if isinstance(agent, Prey):
-                portrayal = {"Shape": "circle",
-                             "Color": "blue"
-                             }
-            elif isinstance(agent, Predator):
-                portrayal = {"Shape": "circle",
-                             "Color": "red"
-                             }
-            elif isinstance(agent, Plant):
-                portrayal = {"Shape": "rect",
-                             "Color": "green"
-                             }
-            elif isinstance(agent, Hunter):
-                portrayal = {"Shape": "rect",
-                             "Color": "orange",
-                             }
-            else:
-                portrayal = None
-            return portrayal
-
+        # prey = model.datacollector.get_agent_vars_dataframe()
+        # g = sns.lineplot(data=prey, x="Step", y="Prey", ci=None)
+    
         
-
 if __name__ == '__main__':
     main()
+
+def agent_portrayal(agent):
+    if isinstance(agent, Predator):
+        portrayal = {"Shape": "circle", "Color": "red"}
+    elif isinstance(agent, Prey):
+        portrayal = {"Shape": "circle", "Color": "blue"}
+    elif isinstance(agent, Plant):
+        portrayal = {"Shape": "rect", "Color": "green"}
+    elif isinstance(agent, Hunter):
+        portrayal = {"Shape": "rect", "Color": "orange"}
+    else:
+        return None
+    return portrayal
+
+model_params ={
+        "height": HEIGHT,
+        "width": WIDTH,
+        "prey_count": PREY,
+        "predator_count": PREDATOR,
+        "plant_count": PLANT,
+        "hunter_count": HUNTER
+    }
+page = JupyterViz(
+    PreyPredatorModel,
+    model_params,
+    measures=["Prey", "Predator", "Plant", "Hunter"],
+    name="Predator/Prey Model",
+    agent_portrayal=agent_portrayal,
+)
+# This is required to render the visualization in the Jupyter notebook
+page
+        
+
