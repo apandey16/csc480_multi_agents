@@ -1,6 +1,7 @@
 # My additions: Plants which the prey eat and they grow in energy, hunters attack the predators, and prey run away from predators
 
 from mesa import Agent, Model
+import mesa
 from mesa.datacollection import DataCollector
 from mesa.experimental.jupyter_viz import JupyterViz
 from mesa.time import RandomActivation
@@ -239,24 +240,22 @@ def main():
         animals_caught = sum(agent.animals_caught for agent in model.schedule.agents if isinstance(agent, Hunter))
         print(f"After step {i}: Prey={prey_count}, Predators={predator_count}, Plants={plant_count}, Hunters={hunter_count}, Animals caught={animals_caught}")
 
-        # prey = model.datacollector.get_agent_vars_dataframe()
-        # g = sns.lineplot(data=prey, x="Step", y="Prey", ci=None)
     
         
 if __name__ == '__main__':
     main()
 
 def agent_portrayal(agent):
+    portrayal = {"Shape": "circle", "Filled": "true", "r": 0.5, "layer": 0}
     if isinstance(agent, Predator):
-        portrayal = {"Shape": "circle", "Color": "red"}
+        portrayal["color"] = "tab:red"
     elif isinstance(agent, Prey):
-        portrayal = {"Shape": "circle", "Color": "blue"}
+        portrayal["color"] = "tab:blue"
     elif isinstance(agent, Plant):
-        portrayal = {"Shape": "rect", "Color": "green"}
+        portrayal["color"] = "tab:green"
     elif isinstance(agent, Hunter):
-        portrayal = {"Shape": "rect", "Color": "orange"}
-    else:
-        return None
+        portrayal["color"] = "tab:orange"
+    print(portrayal)
     return portrayal
 
 model_params ={
@@ -267,6 +266,7 @@ model_params ={
         "plant_count": PLANT,
         "hunter_count": HUNTER
     }
+
 page = JupyterViz(
     PreyPredatorModel,
     model_params,
@@ -277,4 +277,3 @@ page = JupyterViz(
 # This is required to render the visualization in the Jupyter notebook
 page
         
-
