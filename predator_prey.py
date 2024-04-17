@@ -1,16 +1,11 @@
 # My additions: Plants which the prey eat and they grow in energy, hunters attack the predators, and prey run away from predators
 
 from mesa import Agent, Model
-import mesa
 from mesa.datacollection import DataCollector
 from mesa.experimental.jupyter_viz import JupyterViz
 from mesa.time import RandomActivation
-import seaborn as sns
 from mesa.space import MultiGrid
 import random
-from mesa.visualization.modules import CanvasGrid
-from mesa.visualization.ModularVisualization import ModularServer
-from mesa.visualization.modules import ChartModule
 
 
 PLACEHOLDER_POS = (0, 0)
